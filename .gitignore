@@ -1,0 +1,25 @@
+# Python specific ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python/
+env/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Node.js specific ignores (for frontend)
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.parcel-cache/ # If you're using Parcel bundler
+dist/         # Or build/, out/, etc. - wherever your compiled frontend assets go
+
+# Environment variables (CRITICAL)
+.env
+.flaskenv # If you're using Flask with Flask-CLI
+
+# Operating System Files
+Thumbs.db # Windows
