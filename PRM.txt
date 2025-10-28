@@ -1,0 +1,188 @@
+Page 1
+TRIP PICK
+AI Powered Travel Agent
+Fusemachines AI Fellowship
+Project Documentation
+Page 2
+PROJECT TITLE:
+Agentic AI Travel Assistant - “Trip pick"
+PROJECT CONTEXT:
+The travel industry is rapidly evolving, with travelers expecting personalized, real-time
+assistance for planning trips. Traditional travel booking sites require manual searching,
+comparison, and coordination between multiple services. AI-powered conversational agents can
+bridge this gap by providing a seamless, integrated experience, for suggesting destinations to
+booking flights and accommodations, while remembering user preferences and providing
+ongoing assistance.
+PROJECT SUMMARY:
+The Agentic AI Travel Assistant is an intelligent, multi-modal conversational agent that helps
+users plan trips effortlessly. It integrates with flight booking APIs, hotel search engines, weather
+services, and email systems to create a personalized travel itinerary. Powered by LangGraph and
+multiple LLMs, it provides context-aware recommendations, automates bookings, and
+communicates final travel plans to users via email while still keeping an active user feedback
+loop.
+PROBLEM STATEMENT:
+Travel planning is time-consuming and fragmented, requiring users to manually search multiple
+platforms for flights, hotels, and activities, then coordinate logistics themselves. There's a need
+Page 3
+for a single intelligent system that understands user preferences, handles the search and booking
+process, and delivers a complete, personalized itinerary with minimal effort from the user.
+PROJECT GOALS:
+Automate the search and booking process for flights, hotels, and activities.
+Provide context-aware and personalized travel recommendations.
+Maintain conversation memory for continuous, stateful interaction.
+Enable human-in-the-loop control for approval before bookings are made.
+Automate the delivery of complete travel plans via email.
+APPLICATION AREAS:
+• Personal travel planning
+• Corporate/business travel assistance
+• Tourism agencies & concierge services
+• Group trip coordination
+• Last-minute travel planning
+PROJECT JUSTIFICATIONS:
+Page 4
+This project saves time, reduces decision fatigue, and increases travel planning efficiency by
+consolidating multiple tasks into one AI-driven interface. It can benefit travelers, travel agencies,
+and corporate travel departments by streamlining operations and improving user experience.
+LIMITATIONS & CONSTRAINTS:
+• Reliance on third-party APIs for real-time data (flights, hotels).
+• Internet connectivity is required.
+• Potential API rate limits and associated costs.
+• Accuracy depends on the quality of data from external providers.
+ASSUMPTIONS:
+• Users have email access for receiving itineraries.
+• API integrations for booking services are available and functional.
+• Users will provide necessary details (dates, budget, preferences).
+TEAM MEMBER DETAILS:
+| Name | Email | Github |
+| :--- | :--- | :--- |
+| Manjila Pandey | 078bei020.manjila@pcampus.edu.np | https://github.com/manjilap |
+| Nibida Ghimire | nibidaghimire39@gmail.com | https://github.com/NibidaGhimire/ |
+Page 5
+| Riyaj Nepal | riyajnepal2015@gmail.com | |
+| Sadhana Sapkota | mandeyra7@gmail.com | https://github.com/sadhanasapkotaa |
+REQUIREMENTS:
+EXPECTED INPUTS:
+• Destination preferences
+• Travel dates
+• Budget range
+• Preferred airlines or hotel brands
+• Special requirements (e.g., wheelchair access, pet-friendly)
+EXPECTED OUTPUTS:
+The following are the expected outputs of this project:
+• Curated list of flight and hotel options
+• Personalized travel itinerary
+• Email confirmation with all details
+• Activity and local recommendation list
+Page 6
+END-USER & STAKEHOLDERS REQUIREMENTS
+• As a solo traveler, I want AI-generated itineraries that match my personal interests and
+budget so that I save time and effort.
+• As a family traveler, I want safety-verified destinations and kid-friendly activity
+suggestions so that my trip is worry-free.
+• As a corporate travel manager, I want automated bookings and expense reports so that I
+can streamline business travel.
+• As a travel agent, I want AI to handle routine trip planning so I can focus on complex,
+high-value client requests.
+• As a hotel manager, I want to receive targeted guest referrals so that I increase booking
+conversion.
+• As a government tourism board, I want to promote eco-friendly and culturally rich
+destinations so that I improve tourism sustainability.
+FUNCTIONAL REQUIREMENTS:
+| Requirement | Description | Priority |
+| :--- | :--- | :--- |
+| Stateful Personalization Engine | Learns traveler preferences over multiple trips and adapts recommendations and gives personalized | High |
+| | recommendations match user's past preferences. | 90%+ |
+Page 7
+| | recommendations based on instagram and google photos. | |
+| Multi-Agent Orchestration | Specialized AI agents handle flights, hotels, activities, translation, sustainability scoring. | High | All modules execute in parallel with < 2 sec inter-agent latency. |
+| Dynamic Price Prediction | AI predicts price changes using historical and real-time data. | Medium | Price drop alerts sent with >80% prediction accuracy. |
+| Itinerary Optimization | AI balances time, cost, comfort, and eco-friendliness in travel planning. | High | Generates optimal route within 5 sec of request. |
+| Real-Time Disruption Handling | Monitors flights and weather to update plans instantly. | High | 95% of disruptions resolved in < 3 minutes. |
+Page 8
+| Natural Language Translation | Provides instant translations for travel documents, menus, conversations. | Medium | 95%+ translation accuracy in supported languages. |
+| Geo-Contextual Recommendations | Suggests nearby attractions, restaurants, and events during the trip. | Medium | At least 3 relevant suggestions per location. |
+| Generative Itinerary Maps | Creates visual and interactive maps for the itinerary. | Medium | Maps load in < 2 sec for 90% of users. |
+| Sustainability Score Calculation | Rates trip plans based on environmental impact. | Medium | Provides CO2 data for 80%+ of trip options. |
+| Reward points for data inclusion | Gives reward points for including data like nearby events | Medium | Provides an ability to earn rewards and stay active |
+Page 9
+| Human-in-the-Loop Approval | Users can review and approve actions before final bookings. | High | 100% bookings require explicit approval. |
+NON-FUNCTIONAL REQUIREMENTS:
+Page 10
+| Requirement | Description | Priority |
+| :--- | :--- | :--- |
+| Security & Privacy | Full compliance with software engineering best practices. | High | No data breach incidents annually. |
+| Scalability | Can support a large user base and active users without degradation. | High | Response time < 3 sec at peak load. |
+| Availability | Cloud-hosted with redundancy and failover. | High | 90% uptime |
+| Performance | Parallel execution of AI agents without blocking. | High | 85% of requests completed < 10 sec. |
+| Usability | Simple and intuitive | High | ≥ 85% positive feedback from |
+Page 11
+| | interface for all demographics. | | usability tests. |
+| Multi-Language Support | Supports at least 2 languages at launch. | Medium | < 10 sec translation latency. |
+| Maintainability | Codebase must allow easy updates to AI models and APIs. | Medium | 90% of updates deployed with < 1 day downtime. |
+PERFORMANCE METRIC:
+• Recommendation accuracy rate (>90%)
+• Average response time (<10 seconds)
+• Email delivery success rate (>99%)
+• Booking completion rate (>85%)
+DATA COLLECTION:
+Data Identification:
+• Real-time flight and hotel availability
+• User related personal data from
+Page 12
+• Crowd Density data
+• Instagram and Google data from the user
+• Web scraping of local areas using google maps and open weather map
+• Weather forecasts
+• CO2 Data for Sustainability Score Calculation
+• Local activity recommendations data from booking apps
+Data Sources:
+• Flight booking APIs (e.g., Skyscanner, Amadeus)
+• Hotel booking APIs (e.g., Booking.com, Expedia)
+• Weather APIs (e.g., OpenWeatherMap)
+• Activity data from TripAdvisor or Google Places
+Data Acquisition Methods:
+• API calls from integrated travel data providers
+• Open data available on websites through scraping
+• CO2 data through satellite platforms
+Data Collection Challenges:
+• API rate limits
+• Inconsistent data formats
+• Real-time availability changes
+Page 13
+BENCHMARKING THE MODEL:
+Baseline Models & Comparisons:
+• Rule-Based Recommendation Systems (e.g., static filters on travel sites) – Limited
+personalization.
+• Traditional Booking Platforms (e.g., Expedia, Booking.com) – No cross-provider
+orchestration.
+• Chatbot Travel Assistants (e.g., Kayak Chat, Hopper AI) – Limited scope, cannot
+dynamically optimize or adapt post-booking.
+//1 week of building
+Resources Required:
+• LangGraph framework
+• Access to LLM APIs (e.g., GPT-4, Claude)
+• Travel booking APIs
+• Cloud hosting (AWS, GCP, or Azure)
+• Email sending service (SendGrid, SMTP)
+CONCLUSION:
+The Agentic AI Travel Assistant – “Trip Pick" represents a transformative leap in how travelers
+plan, book, and manage their journeys. By combining multi-agent orchestration, stateful
+Page 14
+personalization, and real-time adaptive intelligence, this system addresses the fragmented,
+time-consuming nature of current travel planning workflows. It is designed to provide not only
+convenience but also context-aware, sustainable, and optimized travel experiences for diverse
+user groups—from solo adventurers to corporate travel managers.
+Through advanced AI integration, including dynamic price prediction, sustainability scoring
+using CO2 data, Instagram and Google image-based personalization, and real-time disruption
+handling, “Trip Pick" ensures that itineraries are more relevant, cost-effective, and
+environmentally conscious. Its multi-modal interface and human-in-the-loop design safeguard
+user trust while enabling automation where it matters most.
+With robust functional and non-functional requirements, a clear data acquisition strategy,
+and benchmark comparisons that highlight significant advantages over current platforms, this
+project is positioned to set a new industry standard for intelligent travel assistance.
+Furthermore, the system's modular architecture and adherence to privacy and security best
+practices make it scalable, maintainable, and adaptable for future advancements in AI and travel
+technology.
+In short, “Trip Pick” is more than a booking assistant—it is a personal travel companion
+capable of evolving alongside user needs, market trends, and sustainability imperatives, paving
+the way for a smarter, greener, and more personalized future in travel.

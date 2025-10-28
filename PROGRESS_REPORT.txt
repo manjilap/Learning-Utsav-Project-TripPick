@@ -1,0 +1,265 @@
+Trip Pick - Progress Report
+Generated: 2025-10-28
+
+This report lists every change made so far in the repository and explains it in micro-detail so a beginner
+can understand what was done, why, and how to run / test the project locally.
+
+OVERVIEW
+--------
+The project contains a React frontend (Vite) in "trip_planner frontend/" and a Django backend in "backend/".
+The work done so far focused on:
+- Fixing frontend runtime bugs so the CreateTrip form renders
+- Adding a planner Django app that implements multiple small agent modules and an orchestrator
+- Wiring API endpoints that the frontend can call for generate/save/history
+- Adding email sending for generated and saved itineraries
+- Adding LangGraph node wrappers for each agent and an example graph file
+- Improving developer experience: READMEs, .env templates, and requirements.txt fixes
+
+WHAT CHANGED (MICRODETAILS)
+---------------------------
+
+Files added or modified (grouped by area). For each file, I include its path, purpose, and micro-level
+notes about what was changed or added.
+
+1) Frontend (trip_planner frontend)
+   - Path: trip_planner frontend/src/create_trip/index.jsx
+     Purpose: CreateTrip component (form to collect trip preferences and call backend)
+     Changes: Removed server-side imports (mongoose/express) that were accidentally left in a client file.
+              Fixed React JSX issues like wrong attribute names (class -> className), stray commas, and
+              corrected state shape so the form sends `preferences` object expected by the backend.
+
+   - Path: trip_planner frontend/src/service/aimodel.jsx (or itinerary service wrapper)
+     Purpose: Client-side wrapper that posts preferences to the backend generate endpoint.
+     Changes: Implemented fetch/axios wrapper to POST to /api/planner/generate/ and return itinerary or fall back to mock.
+
+   - Path: trip_planner frontend/src/itinerary/ItineraryResult.jsx
+     Purpose: Display the generated itinerary; allow saving to backend via /api/planner/save/.
+     Changes: Added a Save button and wired the Save call to the itineraryService; uses sessionStorage to pass data between pages.
+
+   - Path: trip_planner frontend/src/auth/Login.jsx and Register.jsx
+     Purpose: Basic login/register UI pages (JWT flow skeleton).
+     Changes: Added forms and wired to accounts endpoints (existing Django accounts app) though full token wiring may require further integration.
+
+   - Path: trip_planner frontend/README.md
+     Purpose: Frontend setup instructions.
+     Changes: Replaced the generic Vite README with project-specific steps, VITE_API_BASE guidance and CORS notes.
+
+   - Path: trip_planner frontend/.env.example
+     Purpose: Template environment file for frontend with VITE_API_BASE and placeholders for API keys.
+
+2) Backend (Django)
+   General: There's an existing Django project in backend/ with an `accounts` app. I added a new `planner` app under backend/planner/.
+
+   - Path: backend/backend/settings.py
+     Purpose: Main Django settings file.
+     Changes:
+       * SECRET_KEY now falls back to a dev default when SECRET_KEY is not set in the environment:
+         SECRET_KEY = env('SECRET_KEY', default='dev-secret-change-me')
+       * Added 'planner' to INSTALLED_APPS so Django recognizes the new app.
+       * Added "http://localhost:5173" to CORS_ALLOWED_ORIGINS so the Vite dev server can call the backend.
+       * Made EMAIL_HOST_USER and EMAIL_HOST_PASSWORD optional with default empty string to avoid manage.py failing if .env is missing.
+
+   - Path: backend/backend/urls.py
+     Purpose: Route registration for the Django project.
+     Changes: Registered the planner endpoints: path('api/planner/', include('planner.urls'))
+
+   - Path: backend/requirements.txt
+     Purpose: Python dependency list used to create the virtualenv.
+     Changes:
+       * Corrected package names and pins:
+         - djangorestframework==3.16.1 (replaced incorrect 'django-restframework==0.0.1')
+         - djangorestframework-simplejwt==5.5.1 (added)
+         - langgraph (added as an optional dependency for LangGraph bindings)
+       * Added a short header comment clarifying install usage.
+
+   - Path: backend/README.md
+     Purpose: Backend-specific setup instructions and notes.
+     Changes: New file added with step-by-step PowerShell commands to create venv, install dependencies, run migrations and runserver.
+
+   - Path: backend/.env (template)
+     Purpose: Template env file with SECRET_KEY, DEBUG, EMAIL_* placeholders and DATABASE_URL example.
+
+3) Planner app (backend/planner)
+   - Path: backend/planner/apps.py
+     Purpose: Django AppConfig for the planner app. (Added)
+
+   - Path: backend/planner/models.py
+     Purpose: Itinerary model. Stores user_id (nullable), preferences JSON, itinerary JSON, created_at timestamp.
+     Changes: Model added; migrations were created and applied successfully (see 'migrate' below).
+
+   - Path: backend/planner/serializers.py
+     Purpose: DRF serializer for Itinerary model. (Added)
+
+   - Path: backend/planner/urls.py
+     Purpose: `generate/`, `save/`, and `history/<user_id>/` endpoints for planner.
+     Changes: New file mapping endpoints to views.
+
+   - Path: backend/planner/views.py
+     Purpose: API endpoints implementation.
+     Changes:
+       * GenerateItineraryView (POST /api/planner/generate/): Calls orchestrate_itinerary with preferences. Now optionally accepts `email` and will send the generated itinerary to that address (or to the authenticated user's email if available).
+       * SaveItineraryView (POST /api/planner/save/): Saves Itinerary record and optionally emails the saved itinerary if `email` passed or user has email. Response includes `email_sent` and `email_error` fields.
+       * UserItinerariesView (GET /api/planner/history/<user_id>/): returns list of saved itineraries for that user.
+
+   - Path: backend/planner/agents/
+     Purpose: Collection of small agent modules. Each agent is a simple Python function that accepts `state` dict and returns a small dict. They were implemented as mock/stub functions so orchestration logic can be tested without external APIs.
+     Files and functions:
+       * flight_recommender.py -> search_flights(state)  -- returns mock flight options
+       * hotel_recommender.py -> search_hotels(state)    -- returns mock hotel options
+       * weather_agent.py -> get_forecast(state)         -- mock weather forecast (existing file)
+       * activities_agent.py -> recommend_activities(state)
+       * packing_agent.py -> generate_packing_list(state)
+       * co2_agent.py -> estimate_co2(state)
+       * food_culture_agent.py -> recommend(state)
+
+   - Path: backend/planner/agents/orchestrator.py
+     Purpose: Orchestration logic. Runs agent functions in parallel using concurrent.futures.ThreadPoolExecutor, collects results and composes a final itinerary JSON structure with:
+       - flights, hotels, weather, activities, packing_list, co2_kg, food_culture
+       - day_plan computed from activities and number of days
+     Notes: Orchestrator returns {'ok': True, 'itinerary': {...}}.
+
+4) LangGraph bindings (optional graph runtime)
+   - Directory: backend/planner/langgraph_nodes/
+     Purpose: Lightweight node wrappers exposing a `run(inputs: dict) -> dict` function per agent so they can be used by LangGraph.
+     Files added:
+       * flight_node.py, hotel_node.py, weather_node.py, activities_node.py, packing_node.py, co2_node.py, food_culture_node.py, orchestrator_node.py
+     - Each file wraps the corresponding agent function and provides a REGISTER_NODE(langgraph) hook to optionally register itself with LangGraph at import time.
+   - File: backend/planner/planner_graph.yaml
+     Purpose: Example graph YAML showing a simple wiring: preferences input -> orchestrator -> agents (document-style; adjust to runtime schema).
+
+5) Project-level docs and housekeeping
+   - File: README.md (project root)
+     Purpose: High-level project overview, quick start, ports, endpoints, and notes.
+   - File: PROGRESS_REPORT.txt (this file) created now.
+
+ENVIRONMENT AND MIGRATIONS (what I ran locally)
+-----------------------------------------------
+I performed these commands in PowerShell from the repo root or backend folder to validate the changes. Exact commands (copy/paste into PowerShell):
+
+1) Create/activate virtualenv (backend):
+   cd backend
+   python -m venv .venv
+   . .venv\Scripts\Activate
+
+2) Install backend dependencies (requirements.txt):
+   pip install -r requirements.txt
+   # (Note: earlier requirements had an incorrect package name that I fixed: 'django-restframework' -> 'djangorestframework')
+
+3) Make and run migrations for planner app and other apps:
+   python manage.py makemigrations planner
+   python manage.py migrate
+
+   - Result: planner migrations were created (planner/migrations/0001_initial.py) and applied. The Itinerary table exists in SQLite.
+
+4) Run a Django system check to surface warnings:
+   python manage.py check --deploy
+   - You may see security warnings during local dev (DEBUG True, missing HSTS settings, etc.) — expected for a dev setup.
+
+5) Run the server for manual testing:
+   python manage.py runserver
+
+FRONTEND DEVELOPMENT (how to run frontend)
+-----------------------------------------
+From repository root:
+   cd "trip_planner frontend"
+   npm install
+   copy .env.example .env
+   # Edit .env if you want to point to a different backend host
+   npm run dev
+
+   - Default Vite port: 5173
+   - Ensure backend CORS allows http://localhost:5173 (settings.py updated)
+
+HOW TO TEST EMAIL SENDING
+-------------------------
+Currently, the project uses Django's EmailMessage. To test safely locally you have two options:
+
+1) Console email backend (recommended for local dev):
+   In `backend/backend/settings.py` set:
+     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+   This will print the email content to the console instead of sending it.
+
+2) Real SMTP server (prod/dev):
+   Populate backend/.env with EMAIL_HOST_USER and EMAIL_HOST_PASSWORD and (optionally) DEFAULT_FROM_EMAIL.
+   Example .env values (do NOT commit actual secrets into the repo):
+     EMAIL_HOST_USER=youremail@example.com
+     EMAIL_HOST_PASSWORD=your-smtp-password
+
+API examples (JSON payloads)
+----------------------------
+1) Generate and email in one step (POST /api/planner/generate/):
+   Body:
+   {
+     "preferences": {
+       "start": "JFK",
+       "destination": "LON",
+       "Days": 3,
+       "budget": 800
+     },
+     "email": "you@example.com"
+   }
+
+   Response:
+   {
+     "itinerary": { ... },
+     "email_sent": true,
+     "email_error": null
+   }
+
+2) Save itinerary and email (POST /api/planner/save/):
+   Body:
+   {
+     "user_id": null,
+     "preferences": { ... },
+     "itinerary": { ... },
+     "email": "you@example.com"
+   }
+
+   Response: Saved itinerary object + email_sent/email_error fields.
+
+IMPORTANT LIMITATIONS AND NEXT STEPS
+-----------------------------------
+1) Agents are mocked: flight, hotel, weather, activities, packing, CO2, and food culture agents return static or simple calculated data. To make the app production-ready, each agent should be implemented to call real APIs (Amadeus/Skyscanner for flights, Booking/Hotels API for hotels, Open-Meteo/OpenWeather for weather, Google Places/Foursquare for activities, a CO2 API for emissions).
+
+2) Email sending is synchronous: for production use, move sending to an asynchronous worker (Celery, Dramatiq) and use a robust email delivery provider (SendGrid, SES).
+
+3) LangGraph integration: node wrappers were added and an example YAML was created (backend/planner/planner_graph.yaml). The REGISTER_NODE hooks are best-effort and may need adaptation to your specific LangGraph SDK/version.
+
+4) Security: settings currently include dev-friendly fallbacks. Before deploying to production:
+   - Set a secure SECRET_KEY in environment, disable DEBUG
+   - Configure SECURE_* settings (HSTS, SESSION_COOKIE_SECURE, CSRF_COOKIE_SECURE, ALLOWED_HOSTS)
+   - Use HTTPS and proper secrets management
+
+WHERE TO LOOK (key files and functions)
+-------------------------------------
+- Frontend create trip form: `trip_planner frontend/src/create_trip/index.jsx`
+- Frontend API wrapper: `trip_planner frontend/src/service/aimodel.jsx` or itineraryService
+- Django planner views: `backend/planner/views.py` (GenerateItineraryView, SaveItineraryView)
+- Orchestrator: `backend/planner/agents/orchestrator.py` (orchestrate_itinerary)
+- Agent implementations: `backend/planner/agents/*.py` (flight_recommender.py, hotel_recommender.py, etc.)
+- LangGraph wrappers: `backend/planner/langgraph_nodes/*.py`
+- Planner graph example: `backend/planner/planner_graph.yaml`
+- DB model: `backend/planner/models.py` and migration at `backend/planner/migrations/0001_initial.py`
+- Settings and CORS: `backend/backend/settings.py`
+
+RECENT COMMANDS RUN (what I executed in this environment)
+-------------------------------------------------------
+- Created/activated venv and installed requirements
+- Fixed requirements.txt and installed djangorestframework & djangorestframework-simplejwt
+- Ran: python manage.py makemigrations planner
+- Ran: python manage.py migrate
+- Ran: python manage.py check --deploy (shows security warnings for dev settings)
+
+FINAL NOTES
+-----------
+This project is now wired end-to-end at a basic level: frontend can call backend endpoints, the planner orchestrator composes mock itineraries, itineraries can be saved, and the project can email itineraries (development-friendly options included).
+
+If you want, I can now:
+- Implement one real agent adapter (e.g., weather via Open-Meteo) end-to-end.
+- Make email sending asynchronous using a worker and provide a small Celery setup.
+- Add unit tests for orchestrator and views.
+- Adapt the LangGraph REGISTER_NODE hooks to a concrete LangGraph runtime and provide a runnable graph execution script.
+
+Pick which next step you'd like me to do and I'll implement it.
+
+End of report.

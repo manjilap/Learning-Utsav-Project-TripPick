@@ -1,18 +1,32 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Trip Planner Frontend (React + Vite)
 
-Currently, two official plugins are available:
+This is the React frontend built with Vite. It communicates with the Django backend API at `/api/*`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Quick setup (Windows PowerShell):
 
-## React Compiler
+```powershell
+# from repo root
+cd "trip_planner frontend"
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+# install node deps
+npm install
 
-Note: This will impact Vite dev & build performances.
+# start dev server (default 5173)
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Environment
+- The frontend looks for an API base URL environment variable in `VITE_API_BASE` (for example `http://127.0.0.1:8000/api/planner/`). You can create a `.env` file in the frontend folder with:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+VITE_API_BASE="http://127.0.0.1:8000/api/planner/"
+```
+
+Notes
+- If you see CORS errors when the frontend calls the backend, ensure `http://localhost:5173` is listed in `CORS_ALLOWED_ORIGINS` in `backend/backend/settings.py` (already added).
+- The `CreateTrip` page posts a generate request to `POST /api/planner/generate/` and then the app displays the itinerary on `/itinerary` and can save it to `/api/planner/save/`.
+
+If you'd like I can add a small npm script to copy `.env.example` into `.env` for quick setup.
+
+```

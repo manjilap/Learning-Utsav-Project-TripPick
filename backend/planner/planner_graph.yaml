@@ -1,0 +1,71 @@
+# Example LangGraph graph wiring for the planner app.
+# This YAML is an example and will need to be adapted to the exact
+# LangGraph syntax you use. It documents the expected nodes and a simple
+# data flow: preferences -> orchestrator -> itinerary.
+
+nodes:
+  - id: preferences_input
+    type: input
+    description: 'Root input node (user preferences)'
+
+  - id: flight_recommender
+    type: python
+    module: backend.planner.langgraph_nodes.flight_node
+    run: run
+    description: 'Search flights (mock)'
+
+  - id: hotel_recommender
+    type: python
+    module: backend.planner.langgraph_nodes.hotel_node
+    run: run
+
+  - id: weather_agent
+    type: python
+    module: backend.planner.langgraph_nodes.weather_node
+    run: run
+
+  - id: activities_agent
+    type: python
+    module: backend.planner.langgraph_nodes.activities_node
+    run: run
+
+  - id: packing_agent
+    type: python
+    module: backend.planner.langgraph_nodes.packing_node
+    run: run
+
+  - id: co2_agent
+    type: python
+    module: backend.planner.langgraph_nodes.co2_node
+    run: run
+
+  - id: food_culture_agent
+    type: python
+    module: backend.planner.langgraph_nodes.food_culture_node
+    run: run
+
+  - id: orchestrator
+    type: python
+    module: backend.planner.langgraph_nodes.orchestrator_node
+    run: run
+    description: 'Composes results into final itinerary'
+
+edges:
+  - from: preferences_input
+    to: orchestrator
+  - from: orchestrator
+    to: flight_recommender
+  - from: orchestrator
+    to: hotel_recommender
+  - from: orchestrator
+    to: weather_agent
+  - from: orchestrator
+    to: activities_agent
+  - from: orchestrator
+    to: packing_agent
+  - from: orchestrator
+    to: co2_agent
+  - from: orchestrator
+    to: food_culture_agent
+
+# Note: adapt this file to the exact syntax required by your LangGraph runtime.
