@@ -3,17 +3,39 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import CreateTrip from './create_trip/index.jsx'
-import { createBrowserRouter, RouterProvider }  from 'react-router-dom'
+import Contact from './pages/Contact.jsx'
+import SignIn from './pages/SignIn.jsx'
+import Register from './pages/Register.jsx'
+import { createBrowserRouter, RouterProvider, Outlet }  from 'react-router-dom'
 import Header from './components/ui/custom/header.jsx'
 
-const router=createBrowserRouter([
-  {path:'/', element:<App/>}, 
-  {path:'/createtrip', element:<CreateTrip/>}]
-)
+function RootLayout(){
+  return (
+    <>
+      <Header />
+      <main>
+        <Outlet />
+      </main>
+    </>
+  )
+}
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <RootLayout />,
+    children: [
+      { index: true, element: <App /> },
+      { path: 'createtrip', element: <CreateTrip /> },
+      { path: 'contact', element: <Contact /> },
+      { path: 'signin', element: <SignIn /> },
+      { path: 'register', element: <Register /> },
+    ],
+  },
+])
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Header/>
-    <RouterProvider router={router}/>
+    <RouterProvider router={router} />
   </StrictMode>,
 )

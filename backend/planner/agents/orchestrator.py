@@ -1,6 +1,9 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import logging
+from typing import TypedDict, Optional, Dict, Any, List
+
+# Imports for the agent functions (used by both local orchestrator and LangGraph nodes)
 from . import (
     flight_recommender,
     hotel_recommender,
@@ -13,12 +16,44 @@ from . import (
 
 logger = logging.getLogger(__name__)
 
+# ------------------------------------------------------------------------------
+# LangGraph Imports and State Definition
+# ------------------------------------------------------------------------------
+try:
+    from langgraph.graph import StateGraph, END, START
+    # Import the run function from the node wrappers
+    from planner.langgraph_nodes.flight_node import run as run_flights
+    from planner.langgraph_nodes.hotel_node import run as run_hotels
+    from planner.langgraph_nodes.weather_node import run as run_weather
+    from planner.langgraph_nodes.activities_node import run as run_activities
+    from planner.langgraph_nodes.packing_node import run as run_packing
+    from planner.langgraph_nodes.co2_node import run as run_co2
+    from planner.langgraph_nodes.food_culture_node import run as run_food_culture
+    LANGGRAPH_AVAILABLE = True
+except ImportError:
+    # If imports fail, the top-level function will automatically fall back
+    LANGGRAPH_AVAILABLE = False
+    logger.warning("LangGraph components not fully available. Orchestration will rely on ThreadPoolExecutor fallback.")
 
+
+# Define the State (MUST be consistent with what nodes read/write)
+class ItineraryState(TypedDict):
+    preferences: Dict[str, Any]
+    # Agent output keys (these keys will be added to the state by the respective agent nodes)
+    flights: Optional[Dict]
+    hotels: Optional[Dict]
+    weather_forecast: Optional[List] # Changed to List to match expected weather agent output
+    activities: Optional[Dict]
+    packing_list: Optional[List] # Changed to List
+    co2_kg: Optional[Dict]
+    food_culture: Optional[Dict]
+
+
+# ------------------------------------------------------------------------------
+# Fallback Orchestrator (Original Logic - KEPT)
+# ------------------------------------------------------------------------------
 def _local_orchestrate(request_state):
-    """Fallback orchestrator that runs agents in parallel using ThreadPoolExecutor.
-
-    This preserves the original behavior if LangGraph is not available or execution fails.
-    """
+    """Fallback orchestrator that runs agents in parallel using ThreadPoolExecutor."""
     prefs = request_state.get('preferences', {})
     state = {'preferences': prefs}
 
@@ -36,6 +71,7 @@ def _local_orchestrate(request_state):
 
     itinerary = {
         'meta': {'budget': prefs.get('budget'), 'destination': prefs.get('destination'), 'days': prefs.get('Days')},
+        # NOTE: Keys here must match the final structure expected by the frontend
         'flights': results['flights'].get('flights', []),
         'hotels': results['hotels'].get('hotels', []),
         'weather': results['weather'].get('forecast', {}),
@@ -48,6 +84,7 @@ def _local_orchestrate(request_state):
     days = int(prefs.get('Days', 3))
     acts = itinerary['activities'] or []
     day_plan = []
+    # Day Plan logic remains the same
     for d in range(days):
         day_plan.append({
             'day': d + 1,
@@ -58,107 +95,136 @@ def _local_orchestrate(request_state):
     return {'ok': True, 'itinerary': itinerary}
 
 
-def run_langgraph(preferences: dict):
-    """Attempt to run the planner using LangGraph.
+# ------------------------------------------------------------------------------
+# LangGraph Orchestrator Logic
+# ------------------------------------------------------------------------------
 
-    The function will:
-    - import graph_builder and StateGraph from the langgraph package (best-effort)
-    - register nodes from backend.planner.langgraph_nodes
-    - load `planner_graph.yaml` from the planner package
-    - initialize the graph state with `preferences` and execute it
-
-    If any step fails (package not installed or API mismatch) an exception is raised so the caller
-    can fall back to the local orchestrator.
+# Helper Node: Consolidator (a required merge point for parallel branches)
+def consolidate_results(state: ItineraryState):
     """
+    Passthrough node to act as a merge point for parallel paths.
+    All agent outputs are merged into the state automatically.
+    """
+    return state
+
+
+def build_full_planner_graph():
+    """Defines and compiles the full LangGraph workflow."""
+    if not LANGGRAPH_AVAILABLE:
+        raise RuntimeError("LangGraph is not available to build the graph.")
+        
+    workflow = StateGraph(ItineraryState)
+    
+    # 1. Define Agent Nodes
+    workflow.add_node("flights", run_flights)
+    workflow.add_node("hotels", run_hotels)
+    workflow.add_node("weather", run_weather)
+    workflow.add_node("activities", run_activities)
+    workflow.add_node("co2", run_co2)
+    workflow.add_node("food_culture", run_food_culture)
+    workflow.add_node("packing", run_packing)
+    workflow.add_node("consolidator", consolidate_results) # Final Merge
+
+    # 2. Define Edges (The flow)
+
+    # 2a. Parallel Execution: All independent agents run from START
+    workflow.set_entry_point("flights") 
+    workflow.add_edge(START, "hotels")
+    workflow.add_edge(START, "weather")
+    workflow.add_edge(START, "activities")
+    workflow.add_edge(START, "co2")
+    workflow.add_edge(START, "food_culture")
+    
+    # 2b. Dependent Execution: Packing runs after Weather
+    workflow.add_edge("weather", "packing") 
+    
+    # 2c. Merge All Paths: All terminal nodes in a path go to the 'consolidator'
+    workflow.add_edge("flights", "consolidator")
+    workflow.add_edge("hotels", "consolidator")
+    workflow.add_edge("activities", "consolidator")
+    workflow.add_edge("co2", "consolidator")
+    workflow.add_edge("food_culture", "consolidator")
+    workflow.add_edge("packing", "consolidator") # The end of the dependent path
+    
+    # 2d. Final Edge
+    workflow.add_edge("consolidator", END)
+
+    return workflow.compile()
+
+
+def run_langgraph(preferences: dict):
+    """Runs the full itinerary planning using the compiled LangGraph."""
+    
+    if not LANGGRAPH_AVAILABLE:
+        raise RuntimeError("LangGraph is not fully initialized.")
+
+    # 1. Build the graph (Build once per run for simplicity, but optimize for production)
     try:
-        # Respect the user's request to import these symbols
-        from langgraph import graph_builder, StateGraph  # type: ignore
+        app = build_full_planner_graph()
     except Exception as e:
-        raise RuntimeError('LangGraph not available or import failed') from e
+        raise RuntimeError(f"Failed to build LangGraph: {e}")
 
-    # Register node wrappers (best-effort)
-    try:
-        from ..langgraph_nodes import register_all_nodes
+    # 2. Initialize State
+    # Note: Use the actual ItineraryState keys as defined in the TypedDict
+    initial_state: ItineraryState = {
+        'preferences': preferences, 
+        'flights': None, 'hotels': None, 'weather_forecast': None, 
+        'activities': None, 'packing_list': None, 'co2_kg': None, 
+        'food_culture': None
+    }
+    
+    # 3. Execute
+    final_state = app.invoke(initial_state)
 
-        register_all_nodes()
-    except Exception:
-        # continue even if registration fails
-        logger.warning('Failed to auto-register langgraph nodes; continuing')
+    # 4. Consolidate and Normalize Output to match the _local_orchestrate format
+    # This ensures the Django view doesn't break
+    consolidated_itinerary = {
+        'meta': {'budget': preferences.get('budget'), 'destination': preferences.get('destination'), 'days': preferences.get('Days')},
+        # NOTE: Keys here must match the final structure expected by the frontend
+        # The .get('key', {}) is crucial because the agent output is merged onto the state.
+        'flights': final_state.get('flights', {}).get('flights', []), 
+        'hotels': final_state.get('hotels', {}).get('hotels', []),
+        # Ensure 'weather' key matches what the local orchestrator expects
+        'weather': {'forecast': final_state.get('weather_forecast', [])}, 
+        'activities': final_state.get('activities', {}).get('activities', []),
+        'packing_list': final_state.get('packing_list', {}).get('packing_list', []),
+        'co2_kg': final_state.get('co2_kg', {}).get('co2_kg'),
+        'food_culture': final_state.get('food_culture', {}).get('food_culture', {}),
+    }
 
-    # Load graph YAML
-    graph_path = Path(__file__).resolve().parent.parent / 'planner_graph.yaml'
-    if not graph_path.exists():
-        raise FileNotFoundError(f'Planner graph not found at {graph_path}')
+    # Replicate the Day Plan logic from _local_orchestrate
+    days = int(preferences.get('Days', 3))
+    acts = consolidated_itinerary['activities'] or []
+    day_plan = []
+    for d in range(days):
+        day_plan.append({
+            'day': d + 1,
+            'activities': acts[d::days][:3] or ['Explore the local area'],
+        })
+    consolidated_itinerary['day_plan'] = day_plan
 
-    # Try a few possible graph_builder APIs
-    graph = None
-    try:
-        if hasattr(graph_builder, 'build_from_yaml'):
-            graph = graph_builder.build_from_yaml(str(graph_path))
-        elif hasattr(graph_builder, 'from_yaml'):
-            graph = graph_builder.from_yaml(str(graph_path))
-        elif hasattr(graph_builder, 'load'):
-            graph = graph_builder.load(str(graph_path))
-        elif hasattr(graph_builder, 'build'):
-            # Some variants take the YAML string
-            text = graph_path.read_text()
-            graph = graph_builder.build(text)
-        else:
-            raise RuntimeError('Unsupported graph_builder API')
-    except Exception as e:
-        raise RuntimeError('Failed to build LangGraph graph') from e
-
-    # Construct a StateGraph and set initial inputs
-    try:
-        sg = StateGraph(graph)
-    except Exception as e:
-        raise RuntimeError('Failed to construct StateGraph') from e
-
-    # Try a few ways to set inputs
-    try:
-        if hasattr(sg, 'set_input'):
-            sg.set_input('preferences_input', preferences)
-        elif hasattr(sg, 'set_inputs'):
-            sg.set_inputs({'preferences_input': preferences})
-        elif hasattr(sg, 'initialize'):
-            sg.initialize({'preferences_input': preferences})
-        else:
-            # last resort: set attribute
-            setattr(sg, 'initial_state', {'preferences_input': preferences})
-    except Exception:
-        # Non-fatal — proceed to run and hope the graph reads external state
-        logger.warning('Could not set initial state on StateGraph; proceeding to run')
-
-    # Execute the graph using common run APIs
-    try:
-        if hasattr(sg, 'run'):
-            result = sg.run()
-        elif hasattr(sg, 'execute'):
-            result = sg.execute()
-        elif hasattr(sg, 'run_sync'):
-            result = sg.run_sync()
-        else:
-            raise RuntimeError('Unsupported StateGraph run API')
-    except Exception as e:
-        raise RuntimeError('LangGraph execution failed') from e
-
-    return result
+    return {'ok': True, 'itinerary': consolidated_itinerary}
 
 
 def orchestrate_itinerary(request_state):
-    """High-level orchestrator entrypoint.
+    """
+    High-level orchestrator entrypoint.
 
     Tries to execute the LangGraph-driven planner first. If LangGraph is not available
     or execution fails, falls back to the original concurrent.futures-based orchestration.
     """
     prefs = request_state.get('preferences', {})
-    try:
-        result = run_langgraph(prefs)
-        # If the LangGraph result is a dict with an 'itinerary' key, normalize output
-        if isinstance(result, dict) and ('itinerary' in result or 'ok' in result):
-            return result
-        # otherwise, attempt to wrap common outputs
-        return {'ok': True, 'itinerary': result}
-    except Exception:
-        logger.exception('LangGraph orchestration failed, falling back to local orchestrator')
+    if LANGGRAPH_AVAILABLE:
+        try:
+            result = run_langgraph(prefs)
+            # Check for standard output format from run_langgraph
+            if isinstance(result, dict) and 'itinerary' in result:
+                return result
+            # Fallback for unexpected format from a complex graph
+            return {'ok': True, 'itinerary': result} 
+        except Exception:
+            logger.exception('LangGraph orchestration failed, falling back to local orchestrator')
+            return _local_orchestrate(request_state)
+    else:
+        # If imports failed at startup, skip the try/except block
         return _local_orchestrate(request_state)
