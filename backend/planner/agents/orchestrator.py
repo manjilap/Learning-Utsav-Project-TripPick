@@ -81,10 +81,10 @@ def _local_orchestrate(request_state):
         # NOTE: Keys here must match the final structure expected by the frontend
         'flights': results['flights'].get('flights', []),
         'hotels': results['hotels'].get('hotels', []),
-        'weather': results['weather'].get('forecast', {}),
+        'weather': {'forecast': results['weather'].get('weather_forecast', [])},
         'activities': results['activities'].get('activities', []),
         'packing_list': results['packing'].get('packing_list', []),
-        'co2_kg': results['co2'].get('co2_kg'),
+        'co2_kg': results['co2'].get('co2_kg', 0),
         'food_culture': results['food_culture'].get('food_culture', {}),
     }
 
@@ -189,14 +189,14 @@ def run_langgraph(preferences: dict):
         'meta': {'budget': preferences.get('budget'), 'destination': preferences.get('destination'), 'days': preferences.get('Days')},
         # NOTE: Keys here must match the final structure expected by the frontend
         # The .get('key', {}) is crucial because the agent output is merged onto the state.
-        'flights': final_state.get('flights', {}).get('flights', []), 
-        'hotels': final_state.get('hotels', {}).get('hotels', []),
+        'flights': final_state.get('flights', []), 
+        'hotels': final_state.get('hotels', []),
         # Ensure 'weather' key matches what the local orchestrator expects
         'weather': {'forecast': final_state.get('weather_forecast', [])}, 
-        'activities': final_state.get('activities', {}).get('activities', []),
-        'packing_list': final_state.get('packing_list', {}).get('packing_list', []),
-        'co2_kg': final_state.get('co2_kg', {}).get('co2_kg'),
-        'food_culture': final_state.get('food_culture', {}).get('food_culture', {}),
+        'activities': final_state.get('activities', []),
+        'packing_list': final_state.get('packing_list', []),
+        'co2_kg': final_state.get('co2_kg', 0),  # Default to 0, not {}
+        'food_culture': final_state.get('food_culture', {}),
     }
 
     # Replicate the Day Plan logic from _local_orchestrate

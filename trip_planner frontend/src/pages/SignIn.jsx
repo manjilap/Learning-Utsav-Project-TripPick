@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { LogIn, Mail, Lock, CheckCircle, AlertCircle } from 'lucide-react'
 import api from '@/service/api'
 
 export default function SignIn(){
@@ -56,21 +57,76 @@ export default function SignIn(){
   }
 
   return (
-    <div className='min-h-[60vh] flex items-center py-16'>
+    <div className='min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center py-16'>
       <div className='container mx-auto px-6'>
-        <div className='max-w-md mx-auto bg-white rounded-xl shadow-md p-8'>
-          <h2 className='text-2xl font-bold mb-4'>Sign In</h2>
-          <p className='text-sm text-gray-500 mb-4'>Sign in to access saved itineraries and preferences.</p>
-          <form onSubmit={submit} className='space-y-4'>
-            {successMsg && <div className='text-green-600 bg-green-50 p-3 rounded border border-green-200'>{successMsg}</div>}
-            {error && <div className='text-red-600 bg-red-50 p-3 rounded border border-red-200'>{error}</div>}
-            <input value={creds.email} onChange={change('email')} placeholder='Email' className='w-full border rounded px-3 py-2' />
-            <input value={creds.password} onChange={change('password')} type='password' placeholder='Password' className='w-full border rounded px-3 py-2' />
-            <div className='flex items-center justify-between'>
-              <button disabled={loading} className='px-4 py-2 bg-purple-600 text-white rounded'>
-                {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-              <Link to='/register' className='text-sm text-purple-600'>Create account</Link>
+        <div className='max-w-md mx-auto bg-white rounded-2xl shadow-2xl p-10 border-t-4 border-purple-600'>
+          <div className='text-center mb-8'>
+            <div className='inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full mb-4'>
+              <LogIn className='text-white' size={28} />
+            </div>
+            <h2 className='text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2'>Welcome Back</h2>
+            <p className='text-gray-600'>Sign in to access your saved itineraries</p>
+          </div>
+
+          <form onSubmit={submit} className='space-y-5'>
+            {successMsg && (
+              <div className='flex items-start gap-3 text-green-700 bg-green-50 p-4 rounded-xl border border-green-200'>
+                <CheckCircle size={20} className='flex-shrink-0 mt-0.5' />
+                <span>{successMsg}</span>
+              </div>
+            )}
+            {error && (
+              <div className='flex items-start gap-3 text-red-700 bg-red-50 p-4 rounded-xl border border-red-200'>
+                <AlertCircle size={20} className='flex-shrink-0 mt-0.5' />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div>
+              <label className='flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2'>
+                <Mail size={16} className='text-purple-600' />
+                Email Address
+              </label>
+              <input 
+                value={creds.email} 
+                onChange={change('email')} 
+                type='email'
+                placeholder='you@example.com' 
+                className='w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-purple-600 focus:outline-none transition-colors'
+                required
+              />
+            </div>
+
+            <div>
+              <label className='flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2'>
+                <Lock size={16} className='text-purple-600' />
+                Password
+              </label>
+              <input 
+                value={creds.password} 
+                onChange={change('password')} 
+                type='password' 
+                placeholder='••••••••' 
+                className='w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-purple-600 focus:outline-none transition-colors'
+                required
+              />
+            </div>
+
+            <button 
+              type='submit'
+              disabled={loading} 
+              className='w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
+            >
+              {loading ? '⏳ Signing in...' : 'Sign In'}
+            </button>
+
+            <div className='text-center pt-4 border-t border-gray-200'>
+              <p className='text-gray-600'>
+                Don't have an account?{' '}
+                <Link to='/register' className='text-purple-600 font-semibold hover:text-purple-700'>
+                  Create one
+                </Link>
+              </p>
             </div>
           </form>
         </div>

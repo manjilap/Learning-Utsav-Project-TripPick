@@ -20,23 +20,32 @@ def get_forecast(state: Dict[str, Any]) -> Dict[str, List[Dict]]:
     prefs = state.get('preferences', {})
     destination = prefs.get('destination')
     
-    if not destination or not OPENWEATHER_API_KEY:
-        logger.error("Destination or OPENWEATHER_API_KEY is missing.")
-        # Return empty list for robust LangGraph state merge
+    if not destination:
+        logger.warning("Destination is missing for weather forecast.")
+        return {'weather_forecast': []}
+    
+    if not OPENWEATHER_API_KEY:
+        logger.warning("OPENWEATHER_API_KEY is not configured. Skipping weather forecast.")
         return {'weather_forecast': []}
 
+    # Extract just the city name if it contains comma (e.g., "Paris, France" -> "Paris")
+    city_name = destination.split(',')[0].strip()
+    
     # OpenWeatherMap 5-day / 3-hour Forecast API endpoint
     weather_url = 'https://api.openweathermap.org/data/2.5/forecast'
     params = {
-        'q': destination,
+        'q': city_name,
         'appid': OPENWEATHER_API_KEY,
         'units': 'metric'  # Use Celsius
     }
 
     try:
-        response = requests.get(weather_url, params=params)
+        logger.info(f"Fetching weather forecast for: {city_name}")
+        response = requests.get(weather_url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
+        
+        logger.info(f"Successfully fetched weather data for {city_name}")
         
         # --- Process the 3-hour data into a simplified daily summary ---
         
@@ -83,12 +92,25 @@ def get_forecast(state: Dict[str, Any]) -> Dict[str, List[Dict]]:
                 'summary': final_summary.title(),
             })
 
+        logger.info(f"Processed {len(forecast_list)} days of weather forecast for {city_name}")
+        
         # Return the output wrapped in the key expected by the LangGraph state
         return {'weather_forecast': forecast_list}
         
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"OpenWeatherMap HTTP Error for {city_name}: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            logger.error(f"Response status: {e.response.status_code}")
+            logger.error(f"Response body: {e.response.text}")
+        return {'weather_forecast': []}
+    except requests.exceptions.Timeout as e:
+        logger.error(f"OpenWeatherMap API timeout for {city_name}: {e}")
+        return {'weather_forecast': []}
     except requests.exceptions.RequestException as e:
-        logger.error(f"OpenWeatherMap API call failed: {e}")
+        logger.error(f"OpenWeatherMap API call failed for {city_name}: {e}")
         return {'weather_forecast': []}
     except Exception as e:
-        logger.error(f"An unexpected error occurred in weather agent: {e}")
+        logger.error(f"Unexpected error in weather agent for {city_name}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return {'weather_forecast': []}

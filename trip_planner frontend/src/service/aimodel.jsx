@@ -25,8 +25,12 @@ export async function approveItinerary(itineraryId) {
   return handleAxiosResponse(api.post('/api/planner/approve/', { itinerary_id: itineraryId, new_status: 'APPROVED' }))
 }
 
-export async function getItineraryHistory(userId) {
-  return handleAxiosResponse(api.get(`/api/planner/history/${userId}/`))
+export async function getItineraryHistory() {
+  return handleAxiosResponse(api.get('/api/planner/history/'))
+}
+
+export async function deleteItinerary(itineraryId) {
+  return handleAxiosResponse(api.delete(`/api/planner/delete/${itineraryId}/`))
 }
 
 export default {
@@ -34,5 +38,6 @@ export default {
   saveItinerary,
   approveItinerary,
   getItineraryHistory,
+  deleteItinerary,
 }
 

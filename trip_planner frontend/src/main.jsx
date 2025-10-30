@@ -8,6 +8,7 @@ import Homepage from './pages/Homepage.jsx'
 import SignIn from './pages/SignIn.jsx'
 import Register from './pages/Register.jsx'
 import ItineraryResult from './itinerary/itineraryresult.jsx'
+import History from './history/history.jsx'
 import { createBrowserRouter, RouterProvider, Outlet }  from 'react-router-dom'
 import Header from './components/ui/custom/header.jsx'
 
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
   { index: true, element: <Homepage /> },
   { path: 'createtrip', element: <CreateTrip /> },
   { path: 'itinerary', element: <ItineraryResult /> },
+  { path: 'history', element: <History /> },
       { path: 'contact', element: <Contact /> },
       { path: 'signin', element: <SignIn /> },
       { path: 'register', element: <Register /> },

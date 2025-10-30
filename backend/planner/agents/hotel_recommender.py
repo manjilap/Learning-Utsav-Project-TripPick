@@ -1,8 +1,7 @@
 import os
 import logging
-from typing import Dict, Any, List
-from amadeus import Client, ResponseError
-from django.conf import settings
+import requests
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -11,26 +10,91 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# NOTE: Amadeus Client is assumed to be initialized (or available) via flight_recommender's initialization
-# For simplicity, we'll re-initialize or reuse the availability check.
-try:
-    # Use the same client initialized in the flight agent's file, or re-init (safer)
-    AMADEUS_CLIENT = Client(
-        client_id=os.getenv('AMADEUS_CLIENT_ID'),
-        client_secret=os.getenv('AMADEUS_CLIENT_SECRET')
-    )
-    AMADEUS_AVAILABLE = True
-except Exception as e:
-    logger.warning(f"Amadeus Client is not available for hotels: {e}")
-    AMADEUS_AVAILABLE = False
+# Amadeus API credentials
+AMADEUS_CLIENT_ID = os.getenv('AMADEUS_CLIENT_ID')
+AMADEUS_CLIENT_SECRET = os.getenv('AMADEUS_CLIENT_SECRET')
+AMADEUS_AVAILABLE = bool(AMADEUS_CLIENT_ID and AMADEUS_CLIENT_SECRET)
+
+
+def _get_amadeus_token() -> Optional[str]:
+    """Gets an OAuth2 token from Amadeus."""
+    if not AMADEUS_AVAILABLE:
+        return None
+    
+    url = "https://test.api.amadeus.com/v1/security/oauth2/token"
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": AMADEUS_CLIENT_ID,
+        "client_secret": AMADEUS_CLIENT_SECRET
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        token = response.json().get("access_token")
+        logger.info("Successfully obtained Amadeus access token")
+        return token
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error getting Amadeus token: {e}")
+        return None
+
+
+def _get_city_iata_code(city_name: str, access_token: str) -> Optional[str]:
+    """
+    Gets IATA code for a city using the Amadeus Cities API.
+    Uses /v1/reference-data/locations/cities endpoint for accurate city IATA codes.
+    """
+    if not city_name:
+        return None
+    
+    # Extract just the city name if it contains comma (e.g., "Amsterdam, Netherlands" -> "Amsterdam")
+    keyword = city_name.split(',')[0].strip()
+    
+    url = "https://test.api.amadeus.com/v1/reference-data/locations/cities"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    params = {
+        "keyword": keyword,  # Use just city name without country
+        "max": 10  # Get top 10 results to find best match
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get("data") and len(data["data"]) > 0:
+            # Get the first result (most relevant match)
+            city = data["data"][0]
+            iata_code = city.get("iataCode", "")
+            name = city.get("name", "")
+            country = city.get("address", {}).get("countryCode", "")
+            
+            if iata_code:
+                logger.info(f"Found IATA code for '{city_name}': {iata_code} - {name}, {country}")
+                return iata_code
+            else:
+                logger.warning(f"City '{city_name}' found but has no IATA code: {name}, {country}")
+                return None
+        else:
+            logger.warning(f"No city found for '{city_name}'")
+            return None
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error getting IATA code for '{city_name}': {e}")
+        if hasattr(e, 'response') and hasattr(e.response, 'text'):
+            logger.error(f"Response: {e.response.text}")
+        return None
 
 
 def search_hotels(state: Dict[str, Any]) -> Dict[str, List[Dict]]:
     """
-    Searches for hotel offers using the Amadeus API based on a city search.
+    Searches for hotels by city using the Amadeus Hotels by City API.
+    Returns hotels within 2 km radius of the destination city center.
     """
     if not AMADEUS_AVAILABLE:
-        return _mock_hotel_search(state) # Fallback to mock
+        logger.warning("Amadeus credentials not available - using mock hotel data")
+        return _mock_hotel_search(state)
 
     prefs = state.get('preferences', {})
     destination_city = prefs.get('destination')
@@ -39,64 +103,63 @@ def search_hotels(state: Dict[str, Any]) -> Dict[str, List[Dict]]:
         logger.warning("Missing destination for hotel search.")
         return {'hotels': []}
 
-    # 1. Get Location ID or Lat/Lon for the city
-    # Amadeus Hotel Search often prefers GEO coordinates. We can get this via the Location API.
-    lat, lon = 0, 0
-    try:
-        response = AMADEUS_CLIENT.reference_data.locations.get(
-            keyword=destination_city, 
-            subType=['CITY']
-        )
-        if response.data:
-            lat = response.data[0]['geoCode']['latitude']
-            lon = response.data[0]['geoCode']['longitude']
-        else:
-            logger.warning(f"Could not get coordinates for {destination_city}.")
-            return {'hotels': []}
-            
-    except Exception as e:
-        logger.error(f"Amadeus Geocoding Error for hotels: {e}")
-        return {'hotels': []}
+    # Get access token
+    access_token = _get_amadeus_token()
+    if not access_token:
+        logger.warning("Failed to get Amadeus access token - using mock data")
+        return _mock_hotel_search(state)
 
-    # 2. Call Hotel Search API (using Bounding Box around the coordinates)
-    # The API is complex, we will use the most direct 'by-square' method for simplicity.
+    # Get IATA city code
+    city_code = _get_city_iata_code(destination_city, access_token)
+    if not city_code:
+        logger.warning(f"Could not find IATA code for '{destination_city}' - using mock data")
+        return _mock_hotel_search(state)
+
+    # Search hotels by city with 2 km radius
+    url = "https://test.api.amadeus.com/v1/reference-data/locations/hotels/by-city"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    params = {
+        "cityCode": city_code,
+        "radius": "2",  # 2 km radius as requested
+        "radiusUnit": "KM",
+        "hotelSource": "ALL"
+    }
+    
     try:
-        # Search a 10km radius (0.1 degree is roughly 11km)
-        response = AMADEUS_CLIENT.shopping.hotel_offers.get(
-            latitude=lat,
-            longitude=lon,
-            radius=10, # 10km radius
-            radiusUnit='KM',
-            checkInDate=(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d'),
-            checkOutDate=(datetime.now() + timedelta(days=2)).strftime('%Y-%m-%d'),
-            view='FULL',
-            bestRateOnly='true',
-            boardType='ROOM_ONLY',
-            # You can add price range filtering here if Amadeus supports it in this call
-        )
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
         
         hotel_options = []
-        for offer in response.data:
-            # Extracting name requires a separate call sometimes, so we'll use a placeholder or best guess
-            hotel_id = offer['hotel']['hotelId']
-            
+        for hotel in data.get("data", [])[:10]:  # Limit to first 10 hotels
             hotel_options.append({
-                'id': hotel_id,
-                'name': f"Hotel near {destination_city} ({hotel_id})", # Placeholder
-                'price_per_night': float(offer['offers'][0]['price']['total']), # Price for the single night
-                'rating': offer['hotel'].get('rating', 'N/A'),
-                'amenities': offer['hotel'].get('amenities', []),
-                'address': offer['hotel']['address']['cityName'],
+                'id': hotel.get('hotelId', 'N/A'),
+                'name': hotel.get('name', 'Unknown Hotel'),
+                'chain_code': hotel.get('chainCode', 'N/A'),
+                'distance': f"{hotel.get('distance', {}).get('value', 'N/A')} {hotel.get('distance', {}).get('unit', 'KM')}",
+                'address': {
+                    'city': hotel.get('address', {}).get('cityName', 'N/A'),
+                    'country': hotel.get('address', {}).get('countryCode', 'N/A'),
+                    'postal_code': hotel.get('address', {}).get('postalCode', 'N/A'),
+                    'lines': hotel.get('address', {}).get('lines', [])
+                },
+                'geo_code': {
+                    'latitude': hotel.get('geoCode', {}).get('latitude', 0),
+                    'longitude': hotel.get('geoCode', {}).get('longitude', 0)
+                }
             })
-            
+        
+        logger.info(f"Found {len(hotel_options)} hotels within 2km of {destination_city} ({city_code})")
         return {'hotels': hotel_options}
         
-    except ResponseError as e:
-        logger.error(f"Amadeus Hotel Search API Error: {e}")
-        return {'hotels': []}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Amadeus Hotels by City API Error: {e}")
+        if hasattr(e.response, 'text'):
+            logger.error(f"Response: {e.response.text}")
+        return _mock_hotel_search(state)
     except Exception as e:
-        logger.error(f"An unexpected error occurred in hotel agent: {e}")
-        return {'hotels': []}
+        logger.error(f"Unexpected error in hotel search: {e}")
+        return _mock_hotel_search(state)
 
 
 # Simple mock for fallback
