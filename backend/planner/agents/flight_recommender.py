@@ -3,16 +3,19 @@ import logging
 from typing import Dict, Any, List
 from amadeus import Client, ResponseError
 from django.conf import settings
-from datetime import datetime
-import timedelta
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 # Initialize Amadeus Client (will automatically handle token generation)
 try:
     AMADEUS_CLIENT = Client(
-        client_id=os.environ.get('AMADEUS_CLIENT_ID'),
-        client_secret=os.environ.get('AMADEUS_CLIENT_SECRET')
+        client_id=os.getenv('AMADEUS_CLIENT_ID'),
+        client_secret=os.getenv('AMADEUS_CLIENT_SECRET')
     )
     AMADEUS_AVAILABLE = True
 except Exception as e:

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import GooglePlacesAutocomplete from 'react-google-places-autocomplete'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { SelectBudgetOptions, SelectTravelLists } from '@/constants/options'
+import api from '@/service/aimodel'
 
 function CreateTrip() {
   const [placeStart, setPlaceStart] = useState(null)
@@ -15,17 +17,30 @@ function CreateTrip() {
    useEffect(()=> {
     console.log(formData)
    }, [formData])
-  const handleGenerate = () => {
+  const navigate = useNavigate()
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleGenerate = async () => {
+    setError(null)
     const prefs = {
-      start: placeStart?.label || null,
+      origin: placeStart?.label || null,
       destination: placeDest?.label || null,
-      Days: formData.Days || formData.days || null,
+      Days: formData.Days || formData.days || null,  // Capital D to match backend
       budget: formData.budget || null,
       travelWith: formData.travelWith || null,
     }
-    // store and navigate to itinerary page which will read from sessionStorage
-    sessionStorage.setItem('trip_prefs', JSON.stringify(prefs))
-    window.location.href = '/itinerary'
+    try {
+      setIsGenerating(true)
+      const result = await api.generateItinerary(prefs)
+      // navigate to itinerary page and pass itinerary in router state
+      navigate('/itinerary', { state: { itinerary: result } })
+    } catch (err) {
+      console.error('Generate failed', err)
+      setError(err.message || String(err))
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -77,17 +92,27 @@ function CreateTrip() {
               <div className='grid grid-cols-1 gap-2'>
                 {SelectBudgetOptions.map((item, index) => {
                   const selected = formData.budget === item.value
+                  const btnClass = selected
+                    ? 'flex items-center gap-3 p-3 rounded-lg text-left border bg-purple-600 text-white border-transparent shadow'
+                    : 'flex items-center gap-3 p-3 rounded-lg text-left border transition hover:bg-purple-50'
                   return (
                     <button
+                      aria-pressed={selected}
                       type='button'
                       key={index}
                       onClick={() => handleInputChange('budget', item.value)}
-                      className={`flex items-center gap-3 p-3 rounded-lg text-left border transition ${selected ? 'ring-2 ring-purple-300 bg-purple-50 border-purple-200' : 'hover:bg-purple-50'}`}>
-                      <span className='text-2xl'>{item.icon}</span>
-                      <div>
-                        <div className='font-semibold'>{item.title}</div>
-                        <div className='text-sm text-gray-500'>{item.description}</div>
+                      className={btnClass}
+                    >
+                      <span className={`text-2xl ${selected ? 'text-white' : ''}`}>{item.icon}</span>
+                      <div className='flex-1'>
+                        <div className={`font-semibold ${selected ? 'font-bold' : ''}`}>{item.title}</div>
+                        <div className={`${selected ? 'text-purple-100' : 'text-sm text-gray-500'}`}>{item.description}</div>
                       </div>
+                      {selected && (
+                        <span className='ml-3 inline-flex items-center px-2 py-1 rounded-full bg-white/20 text-white text-xs'>
+                          ✓ Selected
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -100,26 +125,38 @@ function CreateTrip() {
             <div className='grid grid-cols-1 md:grid-cols-3 gap-3'>
               {SelectTravelLists.map((item, index) => {
                 const selected = formData.travelWith === item.value
+                const btnClass = selected
+                  ? 'flex items-start gap-3 p-3 rounded-lg text-left border bg-purple-600 text-white border-transparent shadow'
+                  : 'flex items-start gap-3 p-3 rounded-lg text-left border transition hover:bg-purple-50'
                 return (
                   <button
+                    aria-pressed={selected}
                     type='button'
                     key={index}
                     onClick={() => handleInputChange('travelWith', item.value)}
-                    className={`flex items-start gap-3 p-3 rounded-lg text-left border transition ${selected ? 'ring-2 ring-purple-300 bg-purple-50 border-purple-200' : 'hover:bg-purple-50'}`}>
-                    <span className='text-2xl mt-1'>{item.icon}</span>
-                    <div>
-                      <div className='font-semibold'>{item.title}</div>
-                      <div className='text-sm text-gray-500'>{item.description}</div>
+                    className={btnClass}
+                  >
+                    <span className={`text-2xl mt-1 ${selected ? 'text-white' : ''}`}>{item.icon}</span>
+                    <div className='flex-1'>
+                      <div className={`font-semibold ${selected ? 'font-bold' : ''}`}>{item.title}</div>
+                      <div className={`${selected ? 'text-purple-100' : 'text-sm text-gray-500'}`}>{item.description}</div>
                     </div>
+                    {selected && (
+                      <span className='ml-3 inline-flex items-center px-2 py-1 rounded-full bg-white/20 text-white text-xs'>
+                        ✓ Selected
+                      </span>
+                    )}
                   </button>
                 )
               })}
             </div>
           </div>
 
-          <div className='flex justify-end mt-6'>
-            <Button onClick={handleGenerate} className='bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg'>
-              Generate Itinerary
+          <div className='flex items-center justify-between mt-6'>
+            {error && <div className='text-red-500 mr-4'>{error}</div>}
+            <div className='flex-grow' />
+            <Button onClick={handleGenerate} disabled={isGenerating} className='bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg'>
+              {isGenerating ? 'Generating...' : 'Generate Itinerary'}
             </Button>
           </div>
         </div>

@@ -1,10 +1,59 @@
-import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 function Header() {
   const [open, setOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [userName, setUserName] = useState('')
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const loc = useLocation()
+  const navigate = useNavigate()
   const isActive = (p) => loc.pathname === p
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const token = localStorage.getItem('access') || localStorage.getItem('jwt_token')
+    setIsAuthenticated(!!token)
+    
+    // Get user info from localStorage (stored during login)
+    const userInfo = localStorage.getItem('user_info')
+    if (userInfo) {
+      try {
+        const parsed = JSON.parse(userInfo)
+        setUserName(parsed.full_name || parsed.email || 'User')
+      } catch (e) {
+        setUserName('User')
+      }
+    }
+  }, [loc])
+
+  useEffect(() => {
+    // Close profile menu when clicking outside
+    const handleClickOutside = (event) => {
+      if (showProfileMenu && !event.target.closest('.profile-menu-container')) {
+        setShowProfileMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showProfileMenu])
+
+  const handleLogout = () => {
+    // Clear all auth-related data
+    localStorage.removeItem('access')
+    localStorage.removeItem('refresh')
+    localStorage.removeItem('jwt_token')
+    localStorage.removeItem('user_info')
+    setIsAuthenticated(false)
+    setUserName('')
+    setShowProfileMenu(false)
+    navigate('/signin')
+  }
+
+  const getInitials = (name) => {
+    if (!name) return 'U'
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  }
 
   return (
     <header className='sticky top-0 bg-white z-50 shadow-sm'>
@@ -21,8 +70,45 @@ function Header() {
         </div>
 
         <div className='hidden md:flex items-center gap-3'>
-          <Link to='/signin' className='px-4 py-2 text-sm rounded-md border border-gray-200 hover:bg-gray-50'>Sign In</Link>
-          <Link to='/register' className='px-4 py-2 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700'>Register</Link>
+          {isAuthenticated ? (
+            <div className='relative profile-menu-container'>
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className='flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-50 border border-gray-200'
+              >
+                <div className='w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-semibold'>
+                  {getInitials(userName)}
+                </div>
+                <span className='text-sm font-medium text-gray-700'>{userName}</span>
+                <svg className={`w-4 h-4 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 9l-7 7-7-7' />
+                </svg>
+              </button>
+              
+              {showProfileMenu && (
+                <div className='absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1'>
+                  <Link 
+                    to='/history' 
+                    onClick={() => setShowProfileMenu(false)}
+                    className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                  >
+                    My Itineraries
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className='w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50'
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <Link to='/signin' className='px-4 py-2 text-sm rounded-md border border-gray-200 hover:bg-gray-50'>Sign In</Link>
+              <Link to='/register' className='px-4 py-2 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700'>Register</Link>
+            </>
+          )}
         </div>
 
         {/* Mobile */}
@@ -42,8 +128,28 @@ function Header() {
             <Link to='/createtrip' onClick={() => setOpen(false)} className='block text-gray-700'>Plan</Link>
             <Link to='/contact' onClick={() => setOpen(false)} className='block text-gray-700'>Contact</Link>
             <div className='pt-2 border-t border-gray-100'>
-              <Link to='/signin' onClick={() => setOpen(false)} className='block py-2 text-gray-700'>Sign In</Link>
-              <Link to='/register' onClick={() => setOpen(false)} className='block py-2 text-white bg-purple-600 rounded-md text-center mt-2'>Register</Link>
+              {isAuthenticated ? (
+                <>
+                  <div className='flex items-center gap-2 py-2'>
+                    <div className='w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-semibold'>
+                      {getInitials(userName)}
+                    </div>
+                    <span className='text-sm font-medium text-gray-700'>{userName}</span>
+                  </div>
+                  <Link to='/history' onClick={() => setOpen(false)} className='block py-2 text-gray-700'>My Itineraries</Link>
+                  <button 
+                    onClick={() => { setOpen(false); handleLogout(); }}
+                    className='w-full text-left py-2 text-red-600'
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to='/signin' onClick={() => setOpen(false)} className='block py-2 text-gray-700'>Sign In</Link>
+                  <Link to='/register' onClick={() => setOpen(false)} className='block py-2 text-white bg-purple-600 rounded-md text-center mt-2'>Register</Link>
+                </>
+              )}
             </div>
           </div>
         </div>

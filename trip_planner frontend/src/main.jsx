@@ -4,8 +4,10 @@ import './index.css'
 import App from './App.jsx'
 import CreateTrip from './create_trip/index.jsx'
 import Contact from './pages/Contact.jsx'
+import Homepage from './pages/Homepage.jsx'
 import SignIn from './pages/SignIn.jsx'
 import Register from './pages/Register.jsx'
+import ItineraryResult from './itinerary/itineraryresult.jsx'
 import { createBrowserRouter, RouterProvider, Outlet }  from 'react-router-dom'
 import Header from './components/ui/custom/header.jsx'
 
@@ -25,8 +27,9 @@ const router = createBrowserRouter([
     path: '/',
     element: <RootLayout />,
     children: [
-      { index: true, element: <App /> },
-      { path: 'createtrip', element: <CreateTrip /> },
+  { index: true, element: <Homepage /> },
+  { path: 'createtrip', element: <CreateTrip /> },
+  { path: 'itinerary', element: <ItineraryResult /> },
       { path: 'contact', element: <Contact /> },
       { path: 'signin', element: <SignIn /> },
       { path: 'register', element: <Register /> },

@@ -2,6 +2,10 @@ import os
 import json
 import logging
 from typing import Dict, Any, List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +13,7 @@ logger = logging.getLogger(__name__)
 try:
     from google import genai
     from google.genai.errors import APIError
-    client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
+    client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
     GEMINI_AVAILABLE = True
 except ImportError:
     logger.warning("Google GenAI SDK not installed. Packing agent will use a fallback mock.")

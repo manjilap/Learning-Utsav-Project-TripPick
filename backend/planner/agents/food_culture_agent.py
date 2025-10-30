@@ -2,12 +2,16 @@ import os
 import json
 import logging
 from typing import Dict, Any, List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Re-use the existing Gemini setup check from activities_agent or packing_agent
 try:
     from google import genai
     from google.genai.errors import APIError
-    client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
+    client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False

@@ -1,61 +1,38 @@
-const API_BASE = import.meta.env.VITE_API_BASE;
+import api from '@/service/api'
 
+async function handleAxiosResponse(promise) {
+  try {
+    const resp = await promise
+    return resp.data
+  } catch (err) {
+    // normalize error message
+    const serverData = err?.response?.data
+    const message = serverData?.detail || serverData?.message || serverData || err.message || 'Request failed'
+    throw new Error(typeof message === 'string' ? message : JSON.stringify(message))
+  }
+}
 
+export async function generateItinerary(prefs) {
+  // Backend expects preferences wrapped in a 'preferences' key
+  return handleAxiosResponse(api.post('/api/planner/generate/', { preferences: prefs }))
+}
 
-// Add the new save function
-const saveItinerary = async (payload) => {
-    const response = await fetch(`${API_BASE}/api/planner/save/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
+export async function saveItinerary(payload) {
+  return handleAxiosResponse(api.post('/api/planner/save/', payload))
+}
 
-    if (!response.ok) {
-        throw new Error('Save Itinerary failed.');
-    }
-    return response.json();
-};
+export async function approveItinerary(itineraryId) {
+  return handleAxiosResponse(api.post('/api/planner/approve/', { itinerary_id: itineraryId, new_status: 'APPROVED' }))
+}
 
-// Add the new approve function for HiTL
-const approveItinerary = async (itineraryId) => {
-    // NOTE: This assumes authentication is handled via global context or local storage 
-    // for the JWT token, which should be added to the 'Authorization' header.
-    // For now, we omit the auth header for speed, but add a TODO.
-    
-    const response = await fetch(`${API_BASE}/api/planner/approve/`, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            // TODO: Add 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-        },
-        body: JSON.stringify({ itinerary_id: itineraryId, new_status: 'APPROVED' }),
-    });
-
-    if (!response.ok) {
-        throw new Error('Approve Itinerary failed.');
-    }
-    return response.json();
-};
-const getItineraryHistory = async (userId) => {
-
-    const response = await fetch(`${API_BASE}/api/planner/history/${userId}/`, {
-        method: 'GET',
-        headers: { 
-            'Content-Type': 'application/json',
-            // TODO: Add Authorization header here for production
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to fetch itinerary history.');
-    }
-    return response.json();
-};
+export async function getItineraryHistory(userId) {
+  return handleAxiosResponse(api.get(`/api/planner/history/${userId}/`))
+}
 
 export default {
-    // ... (generateItinerary),
-    saveItinerary,
-    approveItinerary,
-    getItineraryHistory,
-};
+  generateItinerary,
+  saveItinerary,
+  approveItinerary,
+  getItineraryHistory,
+}
 

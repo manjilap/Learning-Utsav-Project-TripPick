@@ -60,11 +60,6 @@ def _send_itinerary_email_async(email_to: str, prefs: dict, itinerary: dict):
     # Immediately return success to the API caller
     return True, None 
 
-
-# ------------------------------------------------------------------------------
-# API Views
-# ------------------------------------------------------------------------------
-
 class GenerateItineraryView(APIView):
     """
     POST /api/planner/generate/ - Generates itinerary.

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import tourist from '@/assets/tourist.jpg'
 
 export default function Homepage(){
   return (
@@ -15,7 +16,7 @@ export default function Homepage(){
         </div>
         <div className='flex-1'>
           <div className='w-full h-80 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300'>
-            <span className='text-gray-400'>Placeholder image / hero illustration</span>
+            <img src={tourist} alt='Tourist illustration' className='max-h-64 object-contain' />
           </div>
         </div>
       </section>

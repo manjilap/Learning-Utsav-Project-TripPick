@@ -4,6 +4,10 @@ from typing import Dict, Any, List
 from amadeus import Client, ResponseError
 from django.conf import settings
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +16,8 @@ logger = logging.getLogger(__name__)
 try:
     # Use the same client initialized in the flight agent's file, or re-init (safer)
     AMADEUS_CLIENT = Client(
-        client_id=os.environ.get('AMADEUS_CLIENT_ID'),
-        client_secret=os.environ.get('AMADEUS_CLIENT_SECRET')
+        client_id=os.getenv('AMADEUS_CLIENT_ID'),
+        client_secret=os.getenv('AMADEUS_CLIENT_SECRET')
     )
     AMADEUS_AVAILABLE = True
 except Exception as e:

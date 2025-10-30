@@ -1,7 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import logging
-from typing import TypedDict, Optional, Dict, Any, List
+from typing import TypedDict, Optional, Dict, Any, List, Annotated
+import operator
 
 # Imports for the agent functions (used by both local orchestrator and LangGraph nodes)
 from . import (
@@ -37,16 +38,22 @@ except ImportError:
 
 
 # Define the State (MUST be consistent with what nodes read/write)
+# Using Annotated types with operator.add to merge lists from concurrent updates
+def merge_dicts(left: Optional[Dict], right: Optional[Dict]) -> Optional[Dict]:
+    """Custom reducer that takes the right value if it exists, otherwise keeps left."""
+    return right if right is not None else left
+
 class ItineraryState(TypedDict):
     preferences: Dict[str, Any]
     # Agent output keys (these keys will be added to the state by the respective agent nodes)
-    flights: Optional[Dict]
-    hotels: Optional[Dict]
-    weather_forecast: Optional[List] # Changed to List to match expected weather agent output
-    activities: Optional[Dict]
-    packing_list: Optional[List] # Changed to List
-    co2_kg: Optional[Dict]
-    food_culture: Optional[Dict]
+    # Use Annotated with a reducer to handle concurrent updates safely
+    flights: Annotated[Optional[Dict], merge_dicts]
+    hotels: Annotated[Optional[Dict], merge_dicts]
+    weather_forecast: Annotated[Optional[List], merge_dicts]
+    activities: Annotated[Optional[Dict], merge_dicts]
+    packing_list: Annotated[Optional[Dict], merge_dicts]  # Use reducer to handle potential conflicts
+    co2_kg: Annotated[Optional[Dict], merge_dicts]
+    food_culture: Annotated[Optional[Dict], merge_dicts]
 
 
 # ------------------------------------------------------------------------------
@@ -128,7 +135,7 @@ def build_full_planner_graph():
     # 2. Define Edges (The flow)
 
     # 2a. Parallel Execution: All independent agents run from START
-    workflow.set_entry_point("flights") 
+    workflow.add_edge(START, "flights")
     workflow.add_edge(START, "hotels")
     workflow.add_edge(START, "weather")
     workflow.add_edge(START, "activities")

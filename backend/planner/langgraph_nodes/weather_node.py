@@ -2,17 +2,15 @@ from ..agents import weather_agent
 
 
 def run(inputs: dict) -> dict:
-    """Call the weather agent and update the input state with the forecast.
-
-    Expects inputs to be a mutable dict. The function will call
-    `weather_agent.get_forecast(state)` and set `inputs['weather_forecast']`
-    to the returned value (or an empty list on error). Returns the agent result.
+    """Call the weather agent and return the forecast update.
+    
+    Returns a dict with 'weather_forecast' key that will be merged into state.
     """
     state = {'preferences': inputs.get('preferences', {})}
     result = weather_agent.get_forecast(state)
-    # Normalize and update the shared state dictionary for downstream nodes
-    wf = result.get('weather_forecast') if isinstance(result, dict) else None
-    inputs['weather_forecast'] = wf or []
+    
+    # Return the result as-is - it should contain 'weather_forecast' key
+    # The agent returns {'weather_forecast': [...]} or {'weather_forecast': []} on error
     return result
 
 

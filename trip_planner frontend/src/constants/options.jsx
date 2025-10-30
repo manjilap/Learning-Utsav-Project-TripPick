@@ -4,7 +4,8 @@ export const SelectTravelLists=[
         title:'Just Me',
         description:'A solo traveler in exploration mode',
         icon:'👤', 
-        people:"1 Person"
+        people:"1 Person",
+        value: 'solo'
         }, 
 
     {
@@ -12,7 +13,8 @@ export const SelectTravelLists=[
         title:'Couple Retreat', 
         description:'A romantic getaway for two', 
         icon:'💑', 
-        people:"2 people"
+        people:"2 people",
+        value: 'couple'
     }, 
 
     {
@@ -20,7 +22,8 @@ export const SelectTravelLists=[
         title:'Family & Friends Fun', 
         description:'A group trip with loved ones',
         icon:'👨‍👩‍👧‍ ',
-        people:"3-10 people"
+        people:"3-10 people",
+        value: 'group'
     }
 ]
 
@@ -30,12 +33,14 @@ export const SelectBudgetOptions=[
         title:'Economy', 
         description:'Budget-friendly options for the cost-conscious traveler',
         icon:'💸'
+        , value: 'economy'
     },
     {
         id:2, 
         title:'Standard', 
         description:'A balance of comfort and value for discerning travelers', 
         icon:'💵'
+        , value: 'standard'
     }, 
 
     {
@@ -43,6 +48,7 @@ export const SelectBudgetOptions=[
         title:"Luxury", 
         description: 'Premium experiences for those seeking the finest', 
         icon:'💰'
+        , value: 'luxury'
     }
 
 

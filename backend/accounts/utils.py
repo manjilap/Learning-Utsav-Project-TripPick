@@ -1,25 +1,37 @@
-import random
-
 from django.core.mail import EmailMessage
 from django.conf import settings
-from .models import User, OneTimePassword
+from .models import User
 
-def generateOtp():
-    otp = random.randint(100000, 999999)
-    return otp
 
-def send_code_to_user(email):
-    Subject = "One Time Password"
-    otp_code = generateOtp()
-    print(otp_code)
-    user= User.objects.get(email=email)
-    current_site="myAuth.com"
-    email_body = f"Hi {user.first_name},\n\n Thank you for signing up on {current_site}. Your OTP is {otp_code}. Please verify your email with that. \n\nThanks for using our service.\n\nRegards,\nMyAuth Team"
+def send_verification_email(email, request):
+    """Send email verification link to user"""
+    user = User.objects.get(email=email)
+    
+    # Generate verification token
+    token = user.generate_verification_token()
+    
+    # Build verification URL
+    current_site = request.get_host()
+    verification_link = f"http://{current_site}/api/accounts/verify-email/{token}/"
+    
+    subject = "Verify Your Email Address"
+    email_body = f"""Hi {user.first_name},
+
+Thank you for signing up!
+
+Please verify your email address by clicking the link below:
+{verification_link}
+
+If you didn't create an account, please ignore this email.
+
+Thanks,
+Trip Pick Team"""
+    
     from_email = settings.DEFAULT_FROM_EMAIL
     
-    OneTimePassword.objects.create(user=user, code=otp_code)
-    send_email = EmailMessage(subject=Subject, body=email_body, from_email=from_email, to=[email])
+    send_email = EmailMessage(subject=subject, body=email_body, from_email=from_email, to=[email])
     send_email.send(fail_silently=True)
+
 
 def send_normal_email(data):
     email = EmailMessage(

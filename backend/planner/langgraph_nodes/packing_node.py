@@ -2,7 +2,14 @@ from ..agents import packing_agent
 
 
 def run(inputs: dict) -> dict:
-    state = {'preferences': inputs.get('preferences', {})}
+    """
+    Generate packing list based on preferences and weather forecast.
+    Reads weather_forecast from the state and returns packing_list update.
+    """
+    state = {
+        'preferences': inputs.get('preferences', {}),
+        'weather_forecast': inputs.get('weather_forecast', [])
+    }
     return packing_agent.generate_packing_list(state)
 
 

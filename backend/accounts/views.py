@@ -1,18 +1,22 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from rest_framework.generics import GenericAPIView
 from .serializers import (UserRegisterSerializer, UserLoginSerializer, 
                         PasswordResetSerializer, SetNewPasswordSerializer,
                         PasswordResetConfirmSerializer, LogoutUserSerializer)
 from rest_framework.response import Response
 from rest_framework import status
-from .utils import send_code_to_user
-from .models import OneTimePassword, User
+from .utils import send_verification_email
+from .models import User
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import smart_str, DjangoUnicodeDecodeError
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-# Create your views here.
+from django.http import JsonResponse
+from django.conf import settings
+
+def health(request):
+    return JsonResponse({"ok": True, "service": "backend", "message":"Django is running"})
 
 class RegisterUserView(GenericAPIView):
     serializer_class= UserRegisterSerializer
@@ -23,8 +27,8 @@ class RegisterUserView(GenericAPIView):
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             user=serializer.data
-            # send email function to user['email]
-            send_code_to_user(user['email'])
+            # send verification email with link
+            send_verification_email(user['email'], request)
             return Response(
                 {
                     'data': user,
@@ -34,34 +38,29 @@ class RegisterUserView(GenericAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
     
 class VerifyUserEmail(GenericAPIView):
-    def post(self, request):
-        otp_code = request.data.get('otp_code')
+    """Verify user email using verification token from email link"""
+    def get(self, request, token):
         try:
-            user_code_obj = OneTimePassword.objects.get(code=otp_code)
-            user = user_code_obj.user
+            user = User.objects.get(verification_token=token)
             if not user.is_verified:
                 user.is_verified = True
+                user.verification_token = None  # Clear the token after verification
                 user.save()
-                return Response(
-                    {
-                        'message': 'Email Verified Successfully'
-                    }, status=status.HTTP_200_OK
-                )
-            return Response(
-                {
-                    'message': 'Code is invalid. Email Already Verified'
-                }, status=status.HTTP_204_NO_CONTENT
-                )
-        except OneTimePassword.DoesNotExist:
-            return Response(
-                {
-                    'message': 'Invalid Code'
-                }, status=status.HTTP_400_BAD_REQUEST
-            )
+                # Redirect to frontend with success message
+                frontend_url = settings.SITE_URL
+                return redirect(f"{frontend_url}/signin?verified=true")
+            # Already verified, redirect to frontend
+            frontend_url = settings.SITE_URL
+            return redirect(f"{frontend_url}/signin?verified=already")
+        except User.DoesNotExist:
+            # Invalid token, redirect to frontend with error
+            frontend_url = settings.SITE_URL
+            return redirect(f"{frontend_url}/signin?verified=false")
         
 class LoginUserView(GenericAPIView):
     serializer_class= UserLoginSerializer
     def post(self, request):
+        print("request", request.data)
         serializer=self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -4,11 +4,13 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, List
 from dotenv import load_dotenv
+
+# Load environment variables from .env file
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY')
+OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
 
 def get_forecast(state: Dict[str, Any]) -> Dict[str, List[Dict]]:
     """

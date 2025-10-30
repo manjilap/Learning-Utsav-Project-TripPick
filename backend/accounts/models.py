@@ -4,13 +4,14 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from rest_framework_simplejwt.tokens import RefreshToken
 from .managers import UserManager
+import uuid
 
 
 class User(AbstractUser, PermissionsMixin):
     username = None # remove username field
     email = models.EmailField(max_length=255, unique=True, verbose_name=_('Email Address'))
     first_name = models.CharField(max_length=100, verbose_name=_('First Name'))
-    last_name = models.CharField(max_length=100, verbose_name=_('Last Name'))
+    last_name = models.CharField(max_length=100, verbose_name=_('Last Name'), null=True, blank=True)
 
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
@@ -18,6 +19,7 @@ class User(AbstractUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(auto_now=True)
+    verification_token = models.CharField(max_length=100, blank=True, null=True)
 
 
     USERNAME_FIELD = 'email'
@@ -30,6 +32,12 @@ class User(AbstractUser, PermissionsMixin):
     
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"
+    
+    def generate_verification_token(self):
+        """Generate a unique verification token for email verification"""
+        self.verification_token = str(uuid.uuid4())
+        self.save()
+        return self.verification_token
     
     # @property
     def tokens(self):

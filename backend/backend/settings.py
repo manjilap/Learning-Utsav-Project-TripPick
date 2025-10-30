@@ -24,7 +24,7 @@ env = environ.Env()
 environ.Env.read_env(BASE_DIR / '.env')
 
 # External API keys (optional). Use environment variables in production; fall back to None for local dev.
-OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY')
+OPENWEATHER_API_KEY = env('OPENWEATHER_API_KEY', default=None)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -167,6 +167,9 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
+
+# Site URL for email verification links
+SITE_URL = env("SITE_URL", default="http://localhost:5173")
 
 
 SIMPLE_JWT = {

@@ -3,7 +3,7 @@ from .views import RegisterUserView, VerifyUserEmail, LoginUserView, TestAuthent
 
 urlpatterns = [
     path('register/', RegisterUserView.as_view(), name='register'),
-    path('verify/', VerifyUserEmail.as_view(), name='verify'),
+    path('verify-email/<str:token>/', VerifyUserEmail.as_view(), name='verify_email'),
     path('login/', LoginUserView.as_view(), name='login'),
     path('profile/', TestAuthenticationView.as_view(), name='profile'),
     path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset'),
