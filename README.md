@@ -216,12 +216,6 @@ Please follow the existing code style and keep commits small and descriptive.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
-
-- **Fusemachines AI Fellowship** for the opportunity and support
-- **Amadeus** for travel data API access
-- **Google** for Gemini AI and Places API
-- The open-source community for amazing tools
 
 ---
 
