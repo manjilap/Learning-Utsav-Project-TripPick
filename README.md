@@ -179,14 +179,6 @@ Verify `VITE_API_BASE` in frontend `.env` points to `http://127.0.0.1:8000` (cor
 ### Database Migration Issues
 Run `python manage.py makemigrations` followed by `python manage.py migrate --run-syncdb`.
 
-## 👥 Team
-
-Built with ❤️ by Fusemachines AI Fellowship Team:
-
-- **Manjila Pandey** - Backend Architecture & AI Orchestration
-- **Nibida Ghimire** - Frontend Development & UI/UX Design
-- **Riyaj Nepal** - AI Agent Development & Testing
-- **Sadhana Sapkota** - Database Design & Documentation
 
 ## 🤝 Contributing
 
@@ -216,6 +208,12 @@ Please follow the existing code style and keep commits small and descriptive.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## 🙏 Acknowledgments
+
+- **Fusemachines AI Fellowship** for the opportunity and support
+- **Amadeus** for travel data API access
+- **Google** for Gemini AI and Places API
+- The open-source community for amazing tools
 
 ---
 
